@@ -1,6 +1,9 @@
 # Rust Image Converter
 
-High-performance image converter built with Rust and WebAssembly. Convert images between JPEG, PNG, WebP, and GIF formats with quality optimization.
+[![npm version](https://badge.fury.io/js/rust-image-converter.svg)](https://badge.fury.io/js/rust-image-converter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+High-performance image converter built with Rust and WebAssembly. Convert images between JPEG, PNG, WebP, and GIF formats with quality optimization and **automatic WASM initialization**.
 
 ## Features
 
@@ -10,6 +13,7 @@ High-performance image converter built with Rust and WebAssembly. Convert images
 - 📦 **Small Bundle**: Optimized WASM binary for minimal bundle size
 - 🔧 **TypeScript Support**: Full TypeScript definitions included
 - 🌐 **Browser Compatible**: Works in all modern browsers
+- ⚡ **Auto-Initialization**: No manual WASM initialization required
 
 ## Installation
 
@@ -19,17 +23,14 @@ npm install rust-image-converter
 
 ## Usage
 
-### Basic Usage
+### Basic Usage (No Manual Initialization Required!)
 
 ```javascript
-import init, { convert } from 'rust-image-converter';
+import { convert } from 'rust-image-converter';
 
-// Initialize the WASM module
-await init();
-
-// Convert image data
+// Convert image data - WASM initializes automatically on first use!
 const imageData = new Uint8Array(/* your image data */);
-const convertedData = convert(imageData, {
+const convertedData = await convert(imageData, {
   format: 'webp',
   quality: 0.8
 });
@@ -38,35 +39,47 @@ const convertedData = convert(imageData, {
 ### TypeScript
 
 ```typescript
-import init, { convert, ConvertOptions } from 'rust-image-converter';
-
-interface ConvertOptions {
-  format?: string;
-  quality?: number;
-}
+import { convert, ConvertOptions } from 'rust-image-converter';
 
 const options: ConvertOptions = {
   format: 'webp',
   quality: 0.8
 };
 
-await init();
-const result = convert(imageData, options);
+// No init() call needed - everything is automatic!
+const result = await convert(imageData, options);
+```
+
+### File Upload Example
+
+```javascript
+import { convert } from 'rust-image-converter';
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const imageData = new Uint8Array(arrayBuffer);
+    
+    // Convert to WebP with 80% quality
+    const convertedData = await convert(imageData, {
+      format: 'webp',
+      quality: 0.8
+    });
+    
+    // Create download link
+    const blob = new Blob([convertedData], { type: 'image/webp' });
+    const url = URL.createObjectURL(blob);
+    // ... handle the converted image
+  }
+});
 ```
 
 ## API Reference
 
-### `init()`
-
-Initializes the WebAssembly module. Must be called before using the `convert` function.
-
-```javascript
-await init();
-```
-
 ### `convert(data, options)`
 
-Converts image data to the specified format.
+Converts image data to the specified format. **WASM module initializes automatically on first use** - no manual initialization required!
 
 **Parameters:**
 - `data: Uint8Array` - The input image data
@@ -75,7 +88,14 @@ Converts image data to the specified format.
   - `quality?: number` - Quality setting (0.0 to 1.0, default: 0.8)
 
 **Returns:**
-- `Uint8Array` - The converted image data
+- `Promise<Uint8Array>` - The converted image data
+
+**Key Features:**
+- 🔄 **Zero-Config Auto-Initialization**: WASM module initializes automatically on first use
+- 🛡️ **Robust Error Handling**: Comprehensive error messages for debugging
+- 🚀 **Performance**: Single global initialization, subsequent calls are instant
+- ✅ **Input Validation**: Validates input data before processing
+- 🎯 **Smart Compression**: Two-step optimization for optimal file sizes
 
 ## Supported Formats
 
@@ -88,12 +108,12 @@ Converts image data to the specified format.
 
 ## Quality Optimization
 
-The converter uses a two-step optimization process:
+The converter uses a sophisticated two-step optimization process:
 
 1. **JPEG Compression**: Images are first compressed using JPEG with the specified quality
 2. **Format Conversion**: The compressed image is then converted to the target format
 
-This approach provides excellent compression ratios while maintaining image quality.
+This approach provides excellent compression ratios while maintaining image quality, especially for WebP and PNG outputs.
 
 ## Browser Support
 
@@ -104,33 +124,37 @@ This approach provides excellent compression ratios while maintaining image qual
 
 ## Examples
 
-### Convert JPEG to WebP
+### Convert JPEG to WebP (Simplified)
 
 ```javascript
-import init, { convert } from 'rust-image-converter';
+import { convert } from 'rust-image-converter';
 
-await init();
-
+// No init() needed - just convert!
 const jpegData = new Uint8Array(/* JPEG data */);
-const webpData = convert(jpegData, {
+const webpData = await convert(jpegData, {
   format: 'webp',
   quality: 0.9
 });
 ```
 
-### Convert with Quality Control
+### Quality Control Examples
 
 ```javascript
 // High quality (larger file)
-const highQuality = convert(imageData, {
+const highQuality = await convert(imageData, {
   format: 'webp',
   quality: 0.95
 });
 
 // Low quality (smaller file)
-const lowQuality = convert(imageData, {
+const lowQuality = await convert(imageData, {
   format: 'webp',
   quality: 0.5
+});
+
+// Default quality (0.8)
+const defaultQuality = await convert(imageData, {
+  format: 'webp'
 });
 ```
 
@@ -139,10 +163,25 @@ const lowQuality = convert(imageData, {
 ```javascript
 // GIF files will be converted using the first frame only
 const gifData = new Uint8Array(/* GIF data */);
-const webpData = convert(gifData, {
+const webpData = await convert(gifData, {
   format: 'webp',
   quality: 0.8
 });
+```
+
+### Error Handling
+
+```javascript
+try {
+  const convertedData = await convert(imageData, {
+    format: 'webp',
+    quality: 0.8
+  });
+  // Handle success
+} catch (error) {
+  console.error('Conversion failed:', error.message);
+  // Handle error
+}
 ```
 
 ## Performance
@@ -150,6 +189,22 @@ const webpData = convert(gifData, {
 - **Speed**: 10-50x faster than JavaScript-only solutions
 - **Memory**: Efficient memory usage with automatic cleanup
 - **Bundle Size**: ~635KB WASM binary + minimal JavaScript wrapper
+- **Initialization**: Automatic and transparent - no performance impact
+
+## Migration from v0.x
+
+If you're upgrading from a previous version that required manual initialization:
+
+```javascript
+// Old way (v0.x)
+import init, { convert } from 'rust-image-converter';
+await init(); // Manual initialization required
+const result = await convert(data, format, quality);
+
+// New way (v1.x) - Much simpler!
+import { convert } from 'rust-image-converter';
+const result = await convert(data, { format, quality });
+```
 
 ## License
 
@@ -161,7 +216,14 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Changelog
 
-### 0.1.0
+### 1.0.0
+- 🎉 **Major Release**: Automatic WASM initialization
+- ✨ **Simplified API**: No more manual `init()` calls required
+- 🔧 **Enhanced TypeScript**: Better type definitions
+- 🛡️ **Improved Error Handling**: More robust error messages
+- 📚 **Updated Documentation**: Comprehensive examples and migration guide
+
+### 0.1.x
 - Initial release
 - Support for JPEG, PNG, WebP, and GIF formats
 - Quality optimization with two-step compression
