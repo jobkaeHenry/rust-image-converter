@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rust Image Converter 테스트</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+      }
+
+      .upload-section {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .file-input {
+        margin: 20px 0;
+      }
+
+      input[type="file"] {
+        padding: 10px;
+        border: 2px dashed #ddd;
+        border-radius: 5px;
+        background: #fafafa;
+      }
+
+      .controls {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        align-items: center;
+        margin: 20px 0;
+        flex-wrap: wrap;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      label {
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #555;
+      }
+
+      select,
+      input[type="range"] {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .quality-display {
+        margin-top: 5px;
+        font-size: 12px;
+        color: #666;
+      }
+
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background 0.3s;
+      }
+
+      button:hover {
+        background: #0056b3;
+      }
+
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      .preview-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-top: 30px;
+      }
+
+      .preview-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .preview-card h3 {
+        margin-top: 0;
+        color: #333;
+      }
+
+      .preview-image {
+        max-width: 100%;
+        max-height: 400px;
+        border: 1px solid #eee;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+
+      .file-info {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+        font-size: 14px;
+        color: #666;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        color: #007bff;
+        font-weight: bold;
+      }
+
+      .error {
+        color: #dc3545;
+        background: #f8d7da;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+        display: none;
+      }
+
+      @media (max-width: 768px) {
+        .preview-section {
+          grid-template-columns: 1fr;
+        }
+
+        .controls {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🖼️ Rust Image Converter 테스트</h1>
+
+      <div class="upload-section">
+        <div class="file-input">
+          <input type="file" id="fileInput" accept="image/*,.gif" />
+        </div>
+
+        <div class="controls">
+          <div class="control-group">
+            <label for="formatSelect">출력 형식:</label>
+            <select id="formatSelect">
+              <option value="webp">WebP</option>
+              <option value="jpeg">JPEG</option>
+              <option value="png">PNG</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="qualitySlider">품질:</label>
+            <input
+              type="range"
+              id="qualitySlider"
+              min="0"
+              max="1"
+              step="0.1"
+              value="0.8"
+            />
+            <div class="quality-display" id="qualityDisplay">0.8</div>
+          </div>
+
+          <button id="convertBtn" disabled>변환하기</button>
+        </div>
+      </div>
+
+      <div class="loading" id="loading">변환 중...</div>
+      <div class="error" id="error"></div>
+
+      <div class="preview-section">
+        <div class="preview-card">
+          <h3>📷 원본 이미지</h3>
+          <img id="originalImage" class="preview-image" style="display: none" />
+          <div id="originalInfo" class="file-info" style="display: none"></div>
+        </div>
+
+        <div class="preview-card">
+          <h3>✨ 변환된 이미지</h3>
+          <img
+            id="convertedImage"
+            class="preview-image"
+            style="display: none"
+          />
+          <div id="convertedInfo" class="file-info" style="display: none"></div>
+          <button id="downloadBtn" style="display: none; margin-top: 10px">
+            다운로드
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import init, { convert } from "./pkg/convertImage.js";
+
+      const fileInput = document.getElementById("fileInput");
+      const formatSelect = document.getElementById("formatSelect");
+      const qualitySlider = document.getElementById("qualitySlider");
+      const qualityDisplay = document.getElementById("qualityDisplay");
+      const convertBtn = document.getElementById("convertBtn");
+      const loading = document.getElementById("loading");
+      const error = document.getElementById("error");
+      const originalImage = document.getElementById("originalImage");
+      const originalInfo = document.getElementById("originalInfo");
+      const convertedImage = document.getElementById("convertedImage");
+      const convertedInfo = document.getElementById("convertedInfo");
+      const downloadBtn = document.getElementById("downloadBtn");
+
+      let originalFile = null;
+      let convertedData = null;
+      let wasmInitialized = false;
+
+      // WASM 초기화
+      async function initializeWasm() {
+        if (!wasmInitialized) {
+          await init();
+          wasmInitialized = true;
+        }
+      }
+
+      // 품질 슬라이더 업데이트
+      qualitySlider.addEventListener("input", (e) => {
+        qualityDisplay.textContent = e.target.value;
+      });
+
+      // 파일 선택 시
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          originalFile = file;
+          showOriginalImage(file);
+          convertBtn.disabled = false;
+          hideError();
+        }
+      });
+
+      // 원본 이미지 표시
+      function showOriginalImage(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          originalImage.src = e.target.result;
+          originalImage.style.display = "block";
+
+          // 애니메이션 이미지인지 확인
+
+          // GIF 파일인지 확인
+          const isGif =
+            file.type === "image/gif" ||
+            file.name.toLowerCase().endsWith(".gif");
+
+          originalInfo.innerHTML = `
+          <strong>파일명:</strong> ${file.name}<br>
+          <strong>크기:</strong> ${(file.size / 1024).toFixed(2)} KB<br>
+          <strong>타입:</strong> ${file.type}<br>
+          ${
+            isGif
+              ? "<strong>📝 참고:</strong> GIF 파일은 첫 번째 프레임만 변환됩니다"
+              : ""
+          }
+        `;
+          originalInfo.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // 변환 실행
+      convertBtn.addEventListener("click", async () => {
+        if (!originalFile) return;
+
+        try {
+          convertBtn.disabled = true;
+          loading.style.display = "block";
+          hideError();
+
+          console.log("Starting conversion...");
+          console.log("File:", originalFile.name, "Size:", originalFile.size);
+
+          // 파일을 Uint8Array로 변환
+          const arrayBuffer = await originalFile.arrayBuffer();
+          const imageData = new Uint8Array(arrayBuffer);
+
+          console.log("Image data length:", imageData.length);
+
+          // 변환 옵션
+          const options = {
+            format: formatSelect.value,
+            quality: parseFloat(qualitySlider.value),
+          };
+
+          console.log("Conversion options:", options);
+
+          // WASM 초기화
+          await initializeWasm();
+
+          // 이미지 변환
+          convertedData = convert(imageData, options);
+
+          console.log(
+            "Conversion successful, result length:",
+            convertedData.length
+          );
+
+          // 변환된 이미지 표시
+          showConvertedImage(convertedData, options.format);
+        } catch (err) {
+          console.error("Conversion error details:", err);
+          showError("변환 중 오류가 발생했습니다: " + err.message);
+        } finally {
+          convertBtn.disabled = false;
+          loading.style.display = "none";
+        }
+      });
+
+      // 변환된 이미지 표시
+      function showConvertedImage(data, format) {
+        const blob = new Blob([data], { type: `image/${format}` });
+        const url = URL.createObjectURL(blob);
+
+        convertedImage.src = url;
+        convertedImage.style.display = "block";
+
+        convertedInfo.innerHTML = `
+        <strong>형식:</strong> ${format.toUpperCase()}<br>
+        <strong>크기:</strong> ${(data.length / 1024).toFixed(2)} KB<br>
+        <strong>압축률:</strong> ${(
+          (1 - data.length / originalFile.size) *
+          100
+        ).toFixed(1)}%<br>
+        <strong>타입:</strong> 📷 정적 이미지
+      `;
+        convertedInfo.style.display = "block";
+
+        // 다운로드 버튼 설정
+        downloadBtn.onclick = () => {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `converted.${format}`;
+          a.click();
+        };
+        downloadBtn.style.display = "block";
+      }
+
+      // 오류 표시
+      function showError(message) {
+        error.textContent = message;
+        error.style.display = "block";
+      }
+
+      // 오류 숨기기
+      function hideError() {
+        error.style.display = "none";
+      }
+    </script>
+  </body>
+</html>
