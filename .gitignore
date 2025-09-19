@@ -63,3 +63,5 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+.DS_Store
