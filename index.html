@@ -221,7 +221,7 @@
     </div>
 
     <script type="module">
-      import init, { convert } from "./pkg/convertImage.js";
+      import { convert } from "./pkg/convertImage.js";
 
       const fileInput = document.getElementById("fileInput");
       const formatSelect = document.getElementById("formatSelect");
@@ -238,15 +238,6 @@
 
       let originalFile = null;
       let convertedData = null;
-      let wasmInitialized = false;
-
-      // WASM 초기화
-      async function initializeWasm() {
-        if (!wasmInitialized) {
-          await init();
-          wasmInitialized = true;
-        }
-      }
 
       // 품질 슬라이더 업데이트
       qualitySlider.addEventListener("input", (e) => {
@@ -256,10 +247,12 @@
       // 파일 선택 시
       fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
+        console.log("File selected:", file);
         if (file) {
           originalFile = file;
           showOriginalImage(file);
           convertBtn.disabled = false;
+          console.log("Convert button enabled:", convertBtn.disabled);
           hideError();
         }
       });
@@ -295,7 +288,11 @@
 
       // 변환 실행
       convertBtn.addEventListener("click", async () => {
-        if (!originalFile) return;
+        console.log("Convert button clicked, originalFile:", originalFile);
+        if (!originalFile) {
+          console.log("No original file, returning");
+          return;
+        }
 
         try {
           convertBtn.disabled = true;
@@ -319,11 +316,8 @@
 
           console.log("Conversion options:", options);
 
-          // WASM 초기화
-          await initializeWasm();
-
-          // 이미지 변환
-          convertedData = convert(imageData, options);
+          // 이미지 변환 (내부에서 자동으로 WASM 초기화)
+          convertedData = await convert(imageData, options);
 
           console.log(
             "Conversion successful, result length:",
